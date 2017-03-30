@@ -1,7 +1,7 @@
 {
   "name": "cordova-icon-generator",
   "version": "0.0.1",
-  "description": "Node script to generate icons for Cordova",
+  "description": "Node.js script to generate icons (iOS & Android) for Cordova",
   "main": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -14,9 +14,8 @@
     "url": "git+https://github.com/gitdude49/cordova-icon-generator.git"
   },
   "keywords": [
-    "Azure",
-    "WebSite/WebApp",
-    "deployment"
+    "Cordova",
+    "Icons"
   ],
   "author": "gitdude49",
   "license": "Unlicense",
