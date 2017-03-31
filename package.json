@@ -1,6 +1,6 @@
 {
   "name": "cordova-icon-generator",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Node.js script to generate icons (iOS & Android) for Cordova",
   "main": "",
   "scripts": {
