@@ -1,29 +1,31 @@
 #!/usr/bin/env node
-"use strict";
+require('events').EventEmitter.defaultMaxListeners = 0;
 
 var fs = require("fs");
 var path = require("path");
 var sharp = require("sharp");
+var rimraf = require("rimraf");
 
 var argv = require('yargs')
-  .usage('Usage: $0 -s <source image> -o <output directory>')
+  .usage('Usage: $0 -s <source image> -o <output directory> [-r]')
   .alias('s', 'source')
   .alias('o', 'output')
+  .alias('r', 'round')
+  .describe('round', 'Create rounded corners.')
   .demand(['s', 'o'])
   .argv;
 
 var sourceFile = argv.source;
 var destDir = argv.output;
+var roundCorners = argv.round;
 
 if (!checkFile(sourceFile)) {
   console.log(`Error: source file (${sourceFile}) not found.`);
   return 1;
 };
 
-//Check/create dest dir
-if (!checkDirectory(destDir)) {
-  fs.mkdirSync(destDir);
-};
+rimraf.sync(destDir);
+fs.mkdirSync(destDir);
 
 var images = [
   ['ios', 'icon-60@3x.png', 180],
@@ -51,24 +53,55 @@ var images = [
   ['android', 'xxxhdpi.png', 192]
 ];
 
-images.forEach(function (image) {
-  var destDirPlatform = path.join(destDir, image[0]);
-  if (!checkDirectory(destDirPlatform)) {
-    fs.mkdirSync(destDirPlatform);
-  };
-  var destFile = path.join(destDirPlatform, image[1]);
-  var size = image[2];
-  console.log(`generating image '${destFile}' with size ${size}x${size}`);
+var pipeline = sharp(sourceFile).metadata((err, meta) => {
 
-  //Note: generating the images is async. If we did nice code we would wait...
-  sharp(sourceFile)
-    .resize(size)
-    .toFile(destFile, function (err, info) {
-      if (err) {
-        console.log(`Error while processing image: ${err}`, err);
-        return 1;
-      }
+  if (err) {
+    console.error(`Error while reading \"${sourceFile}\"`, err);
+    return;
+  }
+
+  if (meta.width !== meta.height) {
+    console.error('Source file is not square.');
+    return;
+  }
+
+  if (roundCorners) {
+    // http://stackoverflow.com/questions/31255291/android-launcher-icon-rounded-corner-edge-radii#
+    // https://material.io/guidelines/style/icons.html#icons-system-icons
+    // 8.33%
+    let radius = meta.width * 0.0833;
+    let svgBuffer = new Buffer(
+      `<svg><rect x="0" y="0" width="${meta.width}" height="${meta.height}" rx="${radius}" ry="${radius}"/></svg>`
+    );
+    pipeline = pipeline.overlayWith(svgBuffer, { cutout: true });
+  }
+
+  pipeline.toBuffer((err, sourceBuffer) => {
+
+    if (err) {
+      console.error(`Error constructing in-memory buffer of \"${sourceFile}\"`, err);
+      return;
+    }
+
+    images.forEach(function (image) {
+      var destDirPlatform = path.join(destDir, image[0]);
+      if (!checkDirectory(destDirPlatform)) {
+        fs.mkdirSync(destDirPlatform);
+      };
+      var destFile = path.join(destDirPlatform, image[1]);
+      var size = image[2];
+      console.log(`generating image '${destFile}' with size ${size}x${size}`);
+
+      sharp(sourceBuffer)
+        .resize(size)
+        .toFile(destFile, function (err, info) {
+          if (err) {
+            console.log(`Error while processing image: ${err}`, err);
+            return 1;
+          }
+        });
     });
+  });
 });
 
 function checkDirectory(dir) {
