@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 require('events').EventEmitter.defaultMaxListeners = 0;
 
+///////////////////////////////////////////////////////////////////////
+
 var fs = require("fs");
 var path = require("path");
 var sharp = require("sharp");
 var rimraf = require("rimraf");
+var mkdirp = require("mkdirp");
+
+///////////////////////////////////////////////////////////////////////
 
 var argv = require('yargs')
   .usage('Usage: $0 -s <source image> -o <output directory> [-r]')
@@ -12,22 +17,21 @@ var argv = require('yargs')
   .alias('o', 'output')
   .alias('r', 'round')
   .describe('round', 'Create rounded corners.')
+  .alias('t', 'targets')
+  .array('targets')
+  .default('targets', ['ios', 'android'])
+  .describe('targets', 'Specify the platform targets (ios|android)')
   .demand(['s', 'o'])
   .argv;
 
 var sourceFile = argv.source;
 var destDir = argv.output;
 var roundCorners = argv.round;
+var targets = argv.targets;
 
-if (!checkFile(sourceFile)) {
-  console.log(`Error: source file (${sourceFile}) not found.`);
-  return 1;
-};
+///////////////////////////////////////////////////////////////////////
 
-rimraf.sync(destDir);
-fs.mkdirSync(destDir);
-
-var images = [
+var imageTargets = [
   ['ios', 'icon-60@3x.png', 180],
   ['ios', 'icon-60.png', 60],
   ['ios', 'icon-60@2x.png', 120],
@@ -53,16 +57,42 @@ var images = [
   ['android', 'xxxhdpi.png', 192]
 ];
 
+var images = [];
+
+targets.forEach((target) => {
+  if (target !== 'ios' && target !== 'android') {
+    throw new Error(`Invalid target specified "${target}". Valid targets are (ios|android).`);
+  }
+
+  images = images.concat(imageTargets.filter((x) => x[0] === target));
+
+  // Ensure a clean start
+
+  var directory = path.join(destDir, target);
+
+  rimraf.sync(directory);
+  mkdirp.sync(directory);
+});
+
+///////////////////////////////////////////////////////////////////////
+
+if (!checkFile(sourceFile)) {
+  console.log(`Error: source file (${sourceFile}) not found.`);
+  return 1;
+};
+
+///////////////////////////////////////////////////////////////////////
+
 var pipeline = sharp(sourceFile).metadata((err, meta) => {
 
   if (err) {
     console.error(`Error while reading \"${sourceFile}\"`, err);
-    return;
+    return 1;
   }
 
   if (meta.width !== meta.height) {
     console.error('Source file is not square.');
-    return;
+    return 1;
   }
 
   if (roundCorners) {
@@ -80,7 +110,7 @@ var pipeline = sharp(sourceFile).metadata((err, meta) => {
 
     if (err) {
       console.error(`Error constructing in-memory buffer of \"${sourceFile}\"`, err);
-      return;
+      return 1;
     }
 
     images.forEach(function (image) {
@@ -103,6 +133,8 @@ var pipeline = sharp(sourceFile).metadata((err, meta) => {
     });
   });
 });
+
+///////////////////////////////////////////////////////////////////////
 
 function checkDirectory(dir) {
   try {
