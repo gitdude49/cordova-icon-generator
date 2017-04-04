@@ -8,6 +8,11 @@ Reference: [Cordova documentation: Customize Icons](https://cordova.apache.org/d
 Feed this script an image (preferably high-resolution and rectangular) and it will generate the Icon images
 Cordova recommends for iOS and Android platform.
 
-Required paramaters:
+Required parameters:
 - -s (or --source): the source image
 - -o (or --output): the destination folder
+
+Optional parameters:
+- -t (or --targets): filter the platform targets (ios|android)
+- -r (or --round): create rounded corners
+
