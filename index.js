@@ -12,22 +12,31 @@ var mkdirp = require("mkdirp");
 ///////////////////////////////////////////////////////////////////////
 
 var argv = require('yargs')
-  .usage('Usage: $0 -s <source image> -o <output directory> [-r]')
+  .usage('Usage: $0 -s <source image> -o <output directory> [-r] [-f]')
   .alias('s', 'source')
   .alias('o', 'output')
+  
   .alias('r', 'round')
   .describe('round', 'Create rounded corners.')
+
+  .alias('f', 'force')
+  .boolean('f')
+  .describe('force', 'Force deleting an existing output directory.')
+  
   .alias('t', 'targets')
   .array('targets')
   .default('targets', ['ios', 'android'])
   .describe('targets', 'Specify the platform targets (ios|android)')
+  
   .demand(['s', 'o'])
   .argv;
 
 var sourceFile = argv.source;
 var destDir = argv.output;
+var force = argv.force;
 var roundCorners = argv.round;
 var targets = argv.targets;
+
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -70,6 +79,10 @@ targets.forEach((target) => {
 
   var directory = path.join(destDir, target);
 
+  if (checkDirectory(directory) && !argv.force) {
+    console.log(`Error: output folder (${directory}) already exists (and -f option not used).`);
+    process.exit(1);
+  }
   rimraf.sync(directory);
   mkdirp.sync(directory);
 });
