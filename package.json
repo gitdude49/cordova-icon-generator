@@ -24,6 +24,8 @@
   },
   "homepage": "https://github.com/gitdude49/cordova-icon-generator#readme",
   "dependencies": {
+    "mkdirp": "^0.5.1",
+    "rimraf": "^2.6.1",
     "sharp": "^0.17.2",
     "yargs": "^7.0.2"
   }
