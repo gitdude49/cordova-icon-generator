@@ -2,7 +2,6 @@
 require('events').EventEmitter.defaultMaxListeners = 0;
 
 ///////////////////////////////////////////////////////////////////////
-
 var fs = require("fs");
 var path = require("path");
 var sharp = require("sharp");
@@ -12,13 +11,16 @@ var mkdirp = require("mkdirp");
 ///////////////////////////////////////////////////////////////////////
 
 var argv = require('yargs')
-  .usage('Usage: $0 -s <source image> -o <output directory> [-r] [-f]')
+  .usage('Usage: $0 -s <source image> -o <output directory> -ai <android icon name> [-r] [-f]')
   .alias('s', 'source')
   .alias('o', 'output')
   
   .alias('r', 'round')
   .describe('round', 'Create rounded corners.')
 
+  .alias('i', 'android-icon')
+  .describe('android-icon', 'Specify Android icon name (default is "icon.png").')
+  
   .alias('f', 'force')
   .boolean('f')
   .describe('force', 'Force deleting an existing output directory.')
@@ -29,12 +31,14 @@ var argv = require('yargs')
   .describe('targets', 'Specify the platform targets (ios|android)')
   
   .demand(['s', 'o'])
+  
   .argv;
 
 var sourceFile = argv.source;
 var destDir = argv.output;
 var force = argv.force;
 var roundCorners = argv.round;
+var androidFileName = argv["android-icon"] || "icon";
 var targets = argv.targets;
 
 
@@ -54,16 +58,17 @@ var imageTargets = [
   ['ios', 'icon-72@2x.png', 144],
   ['ios', 'icon-small.png', 29],
   ['ios', 'icon-small@2x.png', 58],
+  ['ios', 'icon-small@3x.png', 87],
   ['ios', 'icon-50.png', 50],
   ['ios', 'icon-50@2x.png', 100],
   ['ios', 'icon-83.5@2x.png', 167],
 
-  ['android', 'ldpi.png', 36],
-  ['android', 'mdpi.png', 48],
-  ['android', 'hdpi.png', 72],
-  ['android', 'xhdpi.png', 96],
-  ['android', 'xxhdpi.png', 144],
-  ['android', 'xxxhdpi.png', 192]
+  ['android', 'mipmap-ldpi/$$ICON$$.png', 36],
+  ['android', 'mipmap-mdpi/$$ICON$$.png', 48],
+  ['android', 'mipmap-hdpi/$$ICON$$.png', 72],
+  ['android', 'mipmap-xhdpi/$$ICON$$.png', 96],
+  ['android', 'mipmap-xxhdpi/$$ICON$$.png', 144],
+  ['android', 'mipmap-xxxhdpi/$$ICON$$.png', 192]
 ];
 
 var images = [];
@@ -131,7 +136,26 @@ var pipeline = sharp(sourceFile).metadata((err, meta) => {
       if (!checkDirectory(destDirPlatform)) {
         fs.mkdirSync(destDirPlatform);
       };
-      var destFile = path.join(destDirPlatform, image[1]);
+      
+	  image[1] = image[1].replace(/\$\$ICON\$\$/g, androidFileName);
+	  
+	  if (image[1].indexOf("/")) {
+		  var imagePath = image[1].split("/");
+		  for (var i=0;i<imagePath.length-1;i++) {
+			if (!checkDirectory(path.join(destDirPlatform, imagePath[i]))) {
+				fs.mkdirSync(path.join(destDirPlatform, imagePath[i]));
+				destDirPlatform = path.join(destDirPlatform, imagePath[i]);
+			};
+		  }
+		  var destFile = path.join(destDirPlatform, imagePath[imagePath.length-1]);
+	  }
+	  else {
+		  if (!checkDirectory(destDirPlatform)) {
+			fs.mkdirSync(destDirPlatform);
+		  };
+		  
+		  var destFile = path.join(destDirPlatform, image[1]);
+	  }
       var size = image[2];
       console.log(`generating image '${destFile}' with size ${size}x${size}`);
 
